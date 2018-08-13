@@ -182,13 +182,15 @@ def get_full_text(t):
 
     if t.get('retweeted_status'):
         rt_status = t['retweeted_status']
+        link = tweet_link(rt_status['id_str'])
 
         if rt_status.get('extended_tweet'):
             elem = rt_status['extended_tweet']
         else:
             elem = rt_status
         rt_text = elem.get('full_text', elem.get('text'))
-        t['full_text'] = 'RT @' + rt_status['user']['screen_name'] + ': ' + rt_text
+        t['full_text'] = 'RT @' + rt_status['user']['screen_name'] + ': ' + rt_text + \
+                "\n via {}".format(link)
     elif t.get('extended_tweet'):
         t['full_text'] = t['extended_tweet']['full_text']
     else:
