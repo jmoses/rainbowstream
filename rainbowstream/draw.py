@@ -174,21 +174,33 @@ def fallback_humanize(date, fallback_format=None, use_fallback=False):
         clock = date.datetime.strftime(fallback_format)
     return clock
 
+def tweet_link(id_str):
+    return "https://twitter.com/i/web/status/{}".format(id_str)
 
 def get_full_text(t):
     """Handle RTs and extended tweets to always display all the available text"""
     if t.get('retweeted_status'):
         rt_status = t['retweeted_status']
+        link = tweet_link(rt_status['id_str'])
+
         if rt_status.get('extended_tweet'):
             elem = rt_status['extended_tweet']
         else:
             elem = rt_status
         rt_text = elem.get('full_text', elem.get('text'))
-        t['full_text'] = 'RT @' + rt_status['user']['screen_name'] + ': ' + rt_text
+        t['full_text'] = 'RT @' + rt_status['user']['screen_name'] + ': ' + rt_text + \
+                "\n via {}".format(link)
     elif t.get('extended_tweet'):
         t['full_text'] = t['extended_tweet']['full_text']
+    else:
+        t['full_text'] = t.get('full_text', t.get('text'))
 
-    return t.get('full_text', t.get('text'))
+    if t.get('quoted_status'):
+        quoted_text = get_full_text(t['quoted_status'])
+        quoted_text = quoted_text.replace("\n", "\n> ")
+        t['full_text'] = "> {}\n\n{}".format(quoted_text, t['full_text'])
+
+    return t['full_text']
 
 
 def draw(t, keyword=None, humanize=True, noti=False, fil=[], ig=[]):
@@ -202,6 +214,7 @@ def draw(t, keyword=None, humanize=True, noti=False, fil=[], ig=[]):
     tid = t['id']
 
     text = get_full_text(t)
+
     screen_name = t['user']['screen_name']
     name = t['user']['name']
     created_at = t['created_at']
@@ -371,6 +384,7 @@ def draw(t, keyword=None, humanize=True, noti=False, fil=[], ig=[]):
         word = [wo for wo in formater.split() if '#client' in wo][0]
         delimiter = color_func(c['TWEET']['client'])(
             client.join(word.split('#client')))
+
         formater = delimiter.join(formater.split(word))
     except:
         pass
