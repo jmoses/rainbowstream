@@ -197,9 +197,10 @@ def get_full_text(t):
         t['full_text'] = t.get('full_text', t.get('text'))
 
     if t.get('quoted_status'):
-        quoted_text = get_full_text(t['quoted_status'])
+        qs = t['quoted_status']
+        quoted_text = get_full_text(qs)
         quoted_text = quoted_text.replace("\n", "\n> ")
-        t['full_text'] = "> {}\n\n{}".format(quoted_text, t['full_text'])
+        t['full_text'] = u"@{} > {}\n\n{}".format(qs['user']['screen_name'], quoted_text, t['full_text'])
 
     return t['full_text']
 
