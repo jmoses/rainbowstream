@@ -256,6 +256,7 @@ def init(args):
     themes = [f.split('.')[0] for f in files if f.split('.')[-1] == 'json']
     g['themes'] = themes
     g['pause'] = False
+    g['paused_tweets'] = []
     g['message_threads'] = {}
     # Startup cmd
     g['cmd'] = ''
@@ -1858,6 +1859,13 @@ def replay():
     """
     g['pause'] = False
     printNicely(green('Stream is running back now'))
+    if g['paused_tweets']:
+        printNicely(green("** Replaying cached tweets **"))
+        for tweet in g['paused_tweets']:
+            draw(
+                t=tweet,
+                humanize=False,
+            )
 
 
 def clear():
@@ -2201,6 +2209,7 @@ def stream(domain, args, name='Rainbow Stream'):
                 last_tweet_time = time.time()
                 # Check the semaphore pause and lock (stream process only)
                 if g['pause']:
+                    g['paused_tweets'].append(tweet)
                     continue
                 while c['lock']:
                     time.sleep(0.5)
