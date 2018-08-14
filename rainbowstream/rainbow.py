@@ -2120,8 +2120,9 @@ def listen():
             printNicely('')
         except TwitterHTTPError as e:
             detail_twitter_error(e)
-        except Exception:
+        except Exception as e:
             debug_option()
+            printNicely(str(e))
             printNicely(red('OMG something is wrong with Twitter API right now.'))
         finally:
             # Release the semaphore lock

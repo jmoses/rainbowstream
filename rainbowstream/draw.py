@@ -8,6 +8,7 @@ import re
 import os
 
 from io import BytesIO
+from textwrap import TextWrapper
 from twitter.util import printNicely
 from functools import wraps
 from pyfiglet import figlet_format
@@ -21,6 +22,7 @@ from .emoji import *
 # Draw global variables
 dg = {}
 
+SCREEN_ROWS, SCREEN_COLS = map(int, os.popen('stty size', 'r').read().split())
 
 def init_cycle():
     """
@@ -399,6 +401,11 @@ def draw(t, keyword=None, humanize=True, noti=False, fil=[], ig=[]):
             formater = formater[1:]
 
     # Draw
+    wrapper = TextWrapper(width=SCREEN_COLS, initial_indent=' ', 
+            subsequent_indent='  ', break_long_words=False)
+    
+    # This almost works but it counts the escape sequences as characters
+    #printNicely(wrapper.fill(formater))
     printNicely(formater)
 
     # Display Image
