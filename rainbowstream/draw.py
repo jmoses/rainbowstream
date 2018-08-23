@@ -177,6 +177,8 @@ def fallback_humanize(date, fallback_format=None, use_fallback=False):
 
 def get_full_text(t):
     """Handle RTs and extended tweets to always display all the available text"""
+    import pprint
+    pprint.pprint(t)
 
     if t.get('retweeted_status'):
         rt_status = t['retweeted_status']
