@@ -14,6 +14,7 @@ import socket
 import re
 
 from io import BytesIO
+from twitter import Twitter
 from twitter.stream import TwitterStream, Timeout, HeartbeatTimeout, Hangup
 from twitter.api import *
 from twitter.oauth import OAuth, read_token_file
@@ -2134,6 +2135,47 @@ def reconn_notice():
     sys.stdout.write(g['decorated_name'](g['PREFIX']))
     sys.stdout.flush()
 
+def timeline_loop(args):
+    delay = 90
+    last_id = 1
+    while True:
+        # Should this be cached?
+        twitter = Twitter(auth=authen())
+        try:
+            for tweet in reversed(twitter.statuses.home_timeline(since_id=last_id)):
+                last_id = tweet['id']
+                if tweet.get('text'):
+                    # Check the semaphore pause and lock (stream process only)
+                    # Draw the tweet
+                    draw(
+                        t=tweet,
+                        keyword=args.track_keywords,
+                        humanize=False,
+                        fil=args.filter,
+                        ig=args.ignore,
+                    )
+                    # Current readline buffer
+                    current_buffer = readline.get_line_buffer().strip()
+                    # There is an unexpected behaviour in MacOSX readline + Python 2:
+                    # after completely delete a word after typing it,
+                    # somehow readline buffer still contains
+                    # the 1st character of that word
+                    if current_buffer and g['cmd'] != current_buffer:
+                        sys.stdout.write(
+                            g['decorated_name'](g['PREFIX']) + current_buffer)
+                        sys.stdout.flush()
+                    elif not c['HIDE_PROMPT']:
+                        sys.stdout.write(g['decorated_name'](g['PREFIX']))
+                        sys.stdout.flush()
+                elif tweet.get('direct_message'):
+                    print_message(tweet['direct_message'])
+                elif tweet.get('event'):
+                    c['events'].append(tweet)
+                    print_event(tweet)
+        except TwitterHTTPError as e:
+            printNicely("Got twitter error: {}".format(str(e)))
+        time.sleep(delay)
+
 
 def stream(domain, args, name='Rainbow Stream'):
     """
@@ -2335,11 +2377,9 @@ def spawn_personal_stream(args, stuff=None):
     g['PREFIX'] = u2str(emojize(format_prefix()))
     # Start new thread
     th = threading.Thread(
-        target=stream,
-        args=(
-            c['USER_DOMAIN'],
-            args,
-            g['original_name']))
+        target=timeline_loop,
+        args=(args,)
+    )
     th.daemon = True
     th.start()
 
