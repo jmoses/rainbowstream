@@ -2135,51 +2135,70 @@ def reconn_notice():
     sys.stdout.write(g['decorated_name'](g['PREFIX']))
     sys.stdout.flush()
 
+def get_timeline_tweets(which, args, last_id=None):
+    twitter = Twitter(auth=authen())
+    timeline = twitter.statuses.home_timeline if which == 'home' else twitter.statuses.mentions_timeline
+
+    timeline_args = add_tweetmode_parameter({})
+    if last_id:
+        timeline_args['since_id'] = last_id
+
+    try:
+        printNicely("Polling {} {}...".format(which, timeline_args))
+        return timeline(**timeline_args)
+    except TwitterHTTPError as e:
+        printNicely("Got twitter error: {}".format(str(e)))
+
 def timeline_loop(args):
     printNicely("Starting timeline loop...")
     delay = 90
-    last_id = None
+    home_last_id = mentions_last_id = None
     try:
         while True:
-            # Should this be cached?
-            twitter = Twitter(auth=authen())
-            timeline_args = add_tweetmode_parameter({})
-            if last_id:
-                timeline_args['since_id'] = last_id
-            try:
-                printNicely("Polling {}...".format(timeline_args))
-                for tweet in reversed(twitter.statuses.home_timeline(**timeline_args)):
-                    last_id = tweet['id']
-                    if tweet.get('direct_message'):
-                        print_message(tweet['direct_message'])
-                    elif tweet.get('event'):
-                        c['events'].append(tweet)
-                        print_event(tweet)
-                    else:
-                        # Check the semaphore pause and lock (stream process only)
-                        # Draw the tweet
-                        draw(
-                            t=tweet,
-                            keyword=args.track_keywords,
-                            humanize=False,
-                            fil=args.filter,
-                            ig=args.ignore,
-                        )
-                        # Current readline buffer
-                        current_buffer = readline.get_line_buffer().strip()
-                        # There is an unexpected behaviour in MacOSX readline + Python 2:
-                        # after completely delete a word after typing it,
-                        # somehow readline buffer still contains
-                        # the 1st character of that word
-                        if current_buffer and g['cmd'] != current_buffer:
-                            sys.stdout.write(
-                                g['decorated_name'](g['PREFIX']) + current_buffer)
-                            sys.stdout.flush()
-                        elif not c['HIDE_PROMPT']:
-                            sys.stdout.write(g['decorated_name'](g['PREFIX']))
-                            sys.stdout.flush()
-            except TwitterHTTPError as e:
-                printNicely("Got twitter error: {}".format(str(e)))
+            timeline = get_timeline_tweets('home', args, last_id=home_last_id)
+            if timeline:
+                home_last_id = timeline[0]['id']
+                if not mentions_last_id:
+                    # If we don't have a mentions id, use the oldest tweet in the
+                    # home timeline.
+                    mentions_last_id = timeline[-1]['id']
+
+            mentions = get_timeline_tweets('mentions', args, last_id=mentions_last_id)
+            if mentions:
+                # However if we do have mentions, use that last id
+                mentions_last_id = mentions[0]['id']
+
+
+            for tweet in sorted(timeline + mentions, cmp=lambda x, y: cmp(x['id'], y['id'])):
+                if tweet.get('direct_message'):
+                    print_message(tweet['direct_message'])
+                elif tweet.get('event'):
+                    c['events'].append(tweet)
+                    print_event(tweet)
+                else:
+                    # Check the semaphore pause and lock (stream process only)
+                    # Draw the tweet
+                    draw(
+                        t=tweet,
+                        keyword=args.track_keywords,
+                        humanize=False,
+                        fil=args.filter,
+                        ig=args.ignore,
+                    )
+                    # Current readline buffer
+                    current_buffer = readline.get_line_buffer().strip()
+                    # There is an unexpected behaviour in MacOSX readline + Python 2:
+                    # after completely delete a word after typing it,
+                    # somehow readline buffer still contains
+                    # the 1st character of that word
+                    if current_buffer and g['cmd'] != current_buffer:
+                        sys.stdout.write(
+                            g['decorated_name'](g['PREFIX']) + current_buffer)
+                        sys.stdout.flush()
+                    elif not c['HIDE_PROMPT']:
+                        sys.stdout.write(g['decorated_name'](g['PREFIX']))
+                        sys.stdout.flush()
+
             time.sleep(delay)
     finally:
         printNicely("Exited timeline loop")
