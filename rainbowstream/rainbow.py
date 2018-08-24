@@ -2144,7 +2144,6 @@ def get_timeline_tweets(which, args, last_id=None):
         timeline_args['since_id'] = last_id
 
     try:
-        printNicely("Polling {} {}...".format(which, timeline_args))
         return timeline(**timeline_args)
     except TwitterHTTPError as e:
         printNicely("Got twitter error: {}".format(str(e)))
@@ -2158,6 +2157,7 @@ def timeline_loop(args):
             timeline = get_timeline_tweets('home', args, last_id=home_last_id)
             if timeline:
                 home_last_id = timeline[0]['id']
+                printNicely("New timeline id: {}".format(home_last_id))
                 if not mentions_last_id:
                     # If we don't have a mentions id, use the oldest tweet in the
                     # home timeline.
@@ -2167,6 +2167,7 @@ def timeline_loop(args):
             if mentions:
                 # However if we do have mentions, use that last id
                 mentions_last_id = mentions[0]['id']
+                printNicely("New mention id: {}".format(mentions_last_id))
 
 
             for tweet in sorted(timeline + mentions, cmp=lambda x, y: cmp(x['id'], y['id'])):
