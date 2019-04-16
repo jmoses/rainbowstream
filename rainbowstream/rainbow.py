@@ -2147,6 +2147,7 @@ def get_timeline_tweets(which, args, last_id=None):
         return timeline(**timeline_args)
     except TwitterHTTPError as e:
         printNicely("Got twitter error: {}".format(str(e)))
+        return []
 
 def timeline_loop(args):
     printNicely("Starting timeline loop...")
